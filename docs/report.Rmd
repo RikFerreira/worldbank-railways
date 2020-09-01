@@ -1,0 +1,122 @@
+---
+author: "Rik Ferreira Alves"
+title: "Railways across the world"
+subtitle: "Data from WorldBank"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+### Libraries
+
+```{r message=FALSE}
+library(tidyverse)
+library(wbstats)
+```
+
+## Feature extraction
+
+### Goods transported by railways (ton/km)
+
+```{r}
+railways_goods <- wb_data("IS.RRS.GOOD.MT.K6", mrnev = 1)
+
+railways_goods <- railways_goods %>%
+  arrange(-IS.RRS.GOOD.MT.K6) %>%
+  rename(GOODS_T = IS.RRS.GOOD.MT.K6)
+```
+
+### People transported by railways (person/km)
+
+```{r}
+railways_people <- wb_data("IS.RRS.PASG.KM", mrnev = 1)
+
+railways_people <- railways_people %>%
+  arrange(-IS.RRS.PASG.KM) %>%
+  rename(PEOPLE_T = IS.RRS.PASG.KM)
+```
+
+### Country population (thousands)
+
+```{r}
+population <- wb_data("SP.POP.TOTL", mrnev = 1)
+
+population <- population %>%
+  rename(POPULATION = SP.POP.TOTL)
+```
+
+### Country GDP (PPP)
+
+```{r}
+gdp_ppp <- wb_data("NY.GDP.PCAP.PP.CD", mrnev = 1)
+
+gdp_ppp <- gdp_ppp %>%
+  rename(GDP_PPP = NY.GDP.PCAP.PP.CD)
+```
+
+## Dataset construction
+
+```{r}
+dataset <- railways_goods %>%
+  select(iso3c, GOODS_T) %>%
+  full_join(
+    railways_people %>%
+      select(iso3c, PEOPLE_T),
+    by = "iso3c"
+  ) %>%
+  full_join(
+    population %>%
+      select(iso3c, POPULATION),
+    by = "iso3c"
+  ) %>%
+  full_join(
+    gdp_ppp %>%
+      select(iso3c, GDP_PPP),
+    by = "iso3c"
+  )
+```
+
+## Correlations
+
+### People transported on goods transported
+
+Although there are some exceptions, it is noticeable that there is some positive correlaetion between the goods transported and the people transported within countries.
+
+```{r message=FALSE, warning=FALSE}
+dataset %>%
+  ggplot() +
+  geom_point(aes(GOODS_T, PEOPLE_T)) +
+  geom_smooth(aes(GOODS_T, PEOPLE_T), method = "lm", se = FALSE) +
+  annotate("text", label = paste0("Pearson: ", format(cor(dataset$GOODS_T, dataset$PEOPLE_T, use = "complete"), digits = 2)), x = 10, y = 10000) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+### Railway demand
+
+#### Goods transported on GDP
+
+```{r message=FALSE, warning=FALSE}
+dataset %>%
+  ggplot() +
+  geom_point(aes(GDP_PPP, GOODS_T)) +
+  geom_smooth(aes(GDP_PPP, GOODS_T), method = "lm", se = FALSE) +
+  annotate("text", label = paste0("Pearson: ", format(cor(dataset$GDP_PPP, dataset$GOODS_T, use = "complete"), digits = 2)), x = 1e3, y = 1e5) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+#### People transported on population
+
+```{r message=FALSE, warning=FALSE}
+dataset %>%
+  ggplot() +
+  geom_point(aes(POPULATION, PEOPLE_T)) +
+  geom_smooth(aes(POPULATION, PEOPLE_T), method = "lm", se = FALSE) +
+  annotate("text", label = paste0("Pearson: ", format(cor(dataset$POPULATION, dataset$PEOPLE_T, use = "complete"), digits = 2)), x = 1e3, y = 1e5) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
