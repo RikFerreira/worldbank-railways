@@ -1,7 +1,7 @@
 ---
 author: "Rik Ferreira Alves"
 title: "Railways across the world"
-subtitle: "Data from WorldBank"
+subtitle: "With special interest in Brazil situation"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -9,11 +9,18 @@ output:
     toc_float: true
 ---
 
+## Purpose
+
+This work is part of an assignment of __Commerce and Circulation__ chair at UNIMONTES and is currently under development. Feel free to ask me any questions.
+
 ### Libraries
 
 ```{r message=FALSE}
 library(tidyverse)
+library(sf)
+library(tmap)
 library(wbstats)
+library(geobr)
 ```
 
 ## Feature extraction
@@ -103,7 +110,7 @@ dataset %>%
   ggplot() +
   geom_point(aes(GDP_PPP, GOODS_T)) +
   geom_smooth(aes(GDP_PPP, GOODS_T), method = "lm", se = FALSE) +
-  annotate("text", label = paste0("Pearson: ", format(cor(dataset$GDP_PPP, dataset$GOODS_T, use = "complete"), digits = 2)), x = 1e3, y = 1e5) +
+  annotate("text", label = paste0("Pearson: ", format(cor(dataset$GDP_PPP, dataset$GOODS_T, use = "complete"), digits = 2)), x = 2e3, y = 1e5) +
   scale_x_log10() +
   scale_y_log10()
 ```
@@ -115,8 +122,122 @@ dataset %>%
   ggplot() +
   geom_point(aes(POPULATION, PEOPLE_T)) +
   geom_smooth(aes(POPULATION, PEOPLE_T), method = "lm", se = FALSE) +
-  annotate("text", label = paste0("Pearson: ", format(cor(dataset$POPULATION, dataset$PEOPLE_T, use = "complete"), digits = 2)), x = 1e3, y = 1e5) +
+  annotate("text", label = paste0("Pearson: ", format(cor(dataset$POPULATION, dataset$PEOPLE_T, use = "complete"), digits = 2)), x = 1e5, y = 1e4) +
   scale_x_log10() +
   scale_y_log10()
 ```
 
+## Frequencies
+
+### Top 5 countries on goods transported
+
+```{r}
+dataset %>%
+  filter(!is.na(GOODS_T)) %>%
+  mutate(
+    iso3c = as_factor(iso3c) %>%
+      fct_reorder(-GOODS_T) %>%
+      fct_lump(5, w = GOODS_T)
+  ) %>%
+  ggplot() +
+  geom_col(aes(x = iso3c, y = GOODS_T))
+```
+
+### Top 5 countries on people transported
+
+```{r}
+dataset %>%
+  filter(!is.na(PEOPLE_T)) %>%
+  mutate(
+    iso3c = as_factor(iso3c) %>%
+      fct_reorder(-PEOPLE_T) %>%
+      fct_lump(5, w = PEOPLE_T)
+  ) %>%
+  ggplot() +
+  geom_col(aes(x = iso3c, y = PEOPLE_T))
+```
+
+## Brazil under perspective
+
+### Goods transported
+
+Top 5 countries and Brazil
+
+```{r}
+dataset %>%
+  filter(!is.na(GOODS_T)) %>%
+  mutate(
+    iso3c = ifelse(
+      iso3c == "BRA",
+      "BRA",
+      iso3c %>%
+        as_factor() %>%
+        fct_reorder(-GOODS_T) %>%
+        fct_lump(5, w = GOODS_T) %>% as.character()
+    ) %>%
+      as_factor() %>%
+      fct_reorder(-GOODS_T)
+  ) %>%
+  ggplot() +
+  geom_col(aes(x = iso3c, y = GOODS_T))
+```
+
+### People transported
+
+Top 5 countries and Brazil
+
+```{r}
+dataset %>%
+  filter(!is.na(PEOPLE_T)) %>%
+  mutate(
+    iso3c = ifelse(
+      iso3c == "BRA",
+      "BRA",
+      iso3c %>%
+        as_factor() %>%
+        fct_reorder(-PEOPLE_T) %>%
+        fct_lump(5, w = PEOPLE_T) %>% as.character()
+    ) %>%
+      as_factor() %>%
+      fct_reorder(-PEOPLE_T)
+  ) %>%
+  ggplot() +
+  geom_col(aes(x = iso3c, y = PEOPLE_T))
+```
+
+### Railways distribution
+
+#### Data input
+
+```{r}
+states <- read_state(showProgress = FALSE)
+
+head(states)
+```
+
+#### Overview
+
+```{r}
+bra_railways <- st_read("../data/ferrovias_2014.shp", quiet = TRUE)
+
+head(bra_railways)
+```
+
+```{r message=FALSE}
+tm_shape(states) +
+  tm_borders(col = "lightgrey") +
+  tm_shape(bra_railways) +
+  tm_lines(lwd = 2, lty = 1, col = "FERROVIA") +
+  tm_compass(position = c("right", "top")) +
+  tm_scale_bar(position = c("right", "bottom")) +
+  tm_layout(
+    main.title = "Brazilian railways",
+    legend.outside = TRUE,
+    legend.outside.size = .45
+  )
+```
+
+## References
+
+* [World Bank](https://databank.worldbank.org/)
+* [IBGE](https://www.ibge.gov.br/)

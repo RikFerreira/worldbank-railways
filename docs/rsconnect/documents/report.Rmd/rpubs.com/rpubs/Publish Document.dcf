@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/654992/66937a649943447f8af5b74957bc86e2
+bundleId: https://api.rpubs.com/api/v1/document/654992/66937a649943447f8af5b74957bc86e2
+url: http://rpubs.com/rikferreira/654992/edit
+when: 1598993210.93744
